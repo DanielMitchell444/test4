@@ -13,10 +13,17 @@ import PrivateRoute from './Components/PrivateRoute';
 import Goals from './Pages/Goals';
 import Settings from './Pages/Settings';
 import Setup from './Pages/Setup';
+import Calories from './Pages/Calories';
+import Foods from './Pages/Foods';
 function App() {
 
 
   const isAuthenticated = !!localStorage.getItem('auth_token');
+
+  const [total_calories, setTotalCalories] = useState(localStorage.getItem('total_calories'))
+
+  
+  const [menuOpen, setMenuOpen] = useState(false);
 
 
   const [steps, nextSteps] = useState(1)
@@ -30,12 +37,30 @@ function App() {
    firstName: ""
   })
 
+  const [calorieData, setCalorieData] = useState([{
+    calories: "",
+    caloriesProtein: "",
+    caloriesFat: "",
+    caloriesCarbs: ""
+  }])
+  
 
 
 
 
-  const [progress, setProgress] = useState(0)
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [food, setFood] = useState({
+   name: "",
+   calories: "",
+   protein: "",
+   fat: "",
+   grams: ""
+  })
+
+
+  const [progress, setProgress] = useState(10)
+  const [menuOpens, setMenuOpens] = useState(false);
+
+  const [setupSteps, setSetupSteps] = useState(1)
 
   
   const [toggle, setToggle] = useState(false)
@@ -51,14 +76,18 @@ function App() {
     password: ""
   })
 
-  const [goals, setGoals] = useState({})
+  const [goals, setGoals] = useState({
+   goals: ""
+  })
 
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors] = useState("")
 
 
   const getProgress = () => {
     setProgress(0)
   }
+
+  const [weight, setWeight] = useState("")
 
 
   const handleGoogleSignIn = async () => {
@@ -103,51 +132,71 @@ function App() {
 
 
 
-    const handleSignIn = async (e) => {
-      e.preventDefault()
-      if(steps == 1){
-        try {
-          const response = await axios.post("http://localhost:8000/api/login/", {
-            email: loginData.email,
-          });
+  const handleSignIn = async (e) => {
+    e.preventDefault();
+  
+    if (steps === 1) {
+      try {
+        const response = await axios.post("http://localhost:8000/api/login/", {
+          email: loginData.email,
+        });
+  
+        console.log("Login Response:", response.data); // Debugging
+        nextSteps((step) => step + 1);
+      } catch (error) {
+        console.log("Login failed:", error.response.data.message);
+        setErrors(error.response.data.message)
+      }
+    } else if (steps === 2) {
+      try {
+        const response = await axios.post("http://localhost:8000/api/validate_user/", {
+          email: loginData.email,
+          password: loginData.password
+        });
+  
+        console.log("Validate User Response:", response.data); // Debugging
+  
+        const token = response.data.token;
+        const first_name = response.data.first_name;
+        const first_time_login = response.data.first_time_login;
+        const goal = response.data.goals;
+        const target_carbs = response.data.carbs
+        const target_protein = response.data.protein
+        const target_fat = response.data.fat
+        const target_calories = response.data.calories
 
-          console.log(response.data)
-          nextSteps(step => step + 1)
-    
-        } catch(error){
-          console.log('this did not work', error)
+
+  
+        if (token) {
+          // Store user data
+          localStorage.setItem("auth_token", token);
+          localStorage.setItem('email', loginData.email)
+
+          localStorage.setItem("target_carbs", target_carbs)
+          localStorage.setItem('target_protein', target_protein)
+          localStorage.setItem('target_fat', target_fat)
+          localStorage.setItem('target_calories', target_calories)
+          localStorage.setItem("first_name", first_name);
+          localStorage.setItem("goal", goal);
+  
+          console.log("Login Successful:", response.data);
+          localStorage.setItem("first_time_login", first_time_login)
+  
+          if (first_time_login ===  "") {
+            window.location.href = "/Setup";  
+          } else {
+            window.location.href = "/Dashboard";
           }
+        }
+      } catch (error) {
+        console.log("Login failed:", error);
+      }
+    }
+  };    
 
-        } else if(steps == 2){
-            try {
-              const response = await axios.post("http://localhost:8000/api/validate_user/", {
-                email: loginData.email,
-                password: loginData.password
-              });
-              const token = response.data.token
-
-              const first_name = response.data.first_name
-
-              const first_time_login = response.data.first_time_login
-
-              if(token && first_time_login == ""){
-                localStorage.setItem('auth_token', token)
-                localStorage.setItem('first_name', first_name)
-                  console.log(response.data)
-                  console.log(first_name)
-              window.location.href = "/Setup"
-              }
-
-              else{
-                window.location.href = "/Dashboard"
-                localStorage.setItem('first_name', first_name)
-              }
-        
-            } catch(error){
-              console.log('this did not work', error)
-              }
-            }
-          }
+const toggleMenus = () => {
+  setMenuOpens(!menuOpens);
+};
 
           const handleLogout = async () => {
             const token = localStorage.getItem('auth_token');  // Get the token from localStorage
@@ -199,7 +248,7 @@ function App() {
           nextSteps(next => next + 1); // Moves to step 2 (steps will be incremented by 1)
           console.log(steps)
         } catch (error) {
-          setErrors(error.response?.data || { general: 'Registration failed' });
+        setErrors(error.response.data.message)
           console.log('This did not work!', error);
         }
     
@@ -254,41 +303,38 @@ function App() {
     nextSteps(steps - 1);
   }
 
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setSignUpData({ ...signUpData, [name]: value });
 };
 
-const handleClick = async (goals) => {
-  setGoals(goals);
 
-  const token = localStorage.getItem('auth_token')
+const handleClick = async (goal) => {
+  const token = localStorage.getItem("auth_token");
 
-  // Save to Django backend
   try {
     const response = await fetch("http://localhost:8000/api/register_goals", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        'Authorization': `Token ${token}`,
+        Authorization: `Token ${token}`,
       },
-      body: JSON.stringify({
-        goals: goals ,
-      }),
+      body: JSON.stringify(goal), // Send plain string
     });
 
     if (response.ok) {
-      console.log("Choice saved successfully!");
+      console.log("Goal saved successfully!");
       window.location.href = "/Dashboard"
+
+      localStorage.setItem('goal', goal)
     } else {
-      console.error("Error saving choice:", response.statusText);
+      console.error("Error saving goal:", response.statusText);
     }
   } catch (error) {
     console.error("Error:", error);
   }
 };
-
-
 const handleProfileChange = (e) => {
   const { name, value } = e.target;
   setSignUpData({ ...signUpData, [name]: value });
@@ -298,6 +344,61 @@ const handleLoginChange = (e) => {
   const { name, value } = e.target;
   setLoginData({ ...loginData, [name]: value }); // Fix here: use loginData
 };
+
+const handleCalorieChange = (e) => {
+  const {name, value} = e.target
+
+  setCalorieData({...calorieData, [name]: value})
+  
+}
+
+
+const handleFoodItemChange = (e) => {
+  const {name, value} = e.target
+  setFood({...food, [name]: value})
+}
+
+const handleCalorieData = async (e) => {
+  e.preventDefault()
+  let auth_token = localStorage.getItem('auth_token')
+  console.log(auth_token)
+ try{
+  const response = await axios.post('http://localhost:8000/api/register_daily_goals/',
+    {
+      email: localStorage.getItem('email'),
+      target_calories: calorieData.calories,
+      target_carbs: calorieData.caloriesCarbs,
+      target_fat: calorieData.caloriesFat,
+      target_protein: calorieData.caloriesProtein,
+
+    },
+    {
+
+    headers: {
+      'Authorization': `Token ${localStorage.getItem('auth_token')}`,
+    }
+
+    
+  },
+
+
+  )
+
+  setCalorieData({
+    target_calories: calorieData.calories,
+    target_carbs: calorieData.caloriesCarbs,
+    target_fat: calorieData.caloriesFat,
+    target_protein: calorieData.caloriesProtein,
+  })
+  localStorage.setItem('target_calories', calorieData.target_calories)
+  localStorage.setItem('target_carbs', calorieData.target_carbs)
+  localStorage.setItem('target_fat', calorieData.target_fat)
+  localStorage.setItem('target_protein', calorieData.target_protein)
+  window.location.href = "/Dashboard"
+} catch (error){
+  console.log('error:', error.response) 
+}
+ }
 
 const logout = async () => {
   try {
@@ -309,11 +410,49 @@ const logout = async () => {
       console.log(response.data);
       // Clear token and redirect to login page
       localStorage.removeItem('token');
+      localStorage.removeItem('total_calories')
+      localStorage.removeItem('calories')
       window.location.href = '/login';
   } catch (error) {
       console.error("Error logging out:", error.response);
   }
 };
+
+
+const handleFoodItems = async (e) => {
+
+  e.preventDefault()
+
+
+  // Get the current total calories from localStorage, or default to 0 if it doesn't exist
+  const currentTotalCalories = parseInt(localStorage.getItem('calories')) || 0;
+
+  // Calculate the new total calories
+  const newTotalCalories = currentTotalCalories + parseInt(food.calories);
+  try {
+    const response = await axios.post('http://localhost:8000/api/register_food', {
+      email: localStorage.getItem('email'),
+      calories: food.calories,
+      fat: food.fat,
+      grams: food.grams,
+      name: food.name,
+      carbs: food.carbs,
+      protein: food.protein,
+      total_calories: newTotalCalories
+    });
+    console.log(response);
+
+    localStorage.setItem('calories', food.calories)
+    localStorage.setItem('total_calories', newTotalCalories)
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+
+const clearErrors = () => {
+  setErrors("")
+}
 
   return (
     <div className="App">
@@ -322,8 +461,10 @@ const logout = async () => {
       <Route  path = "/" element= {
         <Login
         handleNext={handleNext}
+        errors = {errors}
         steps = {steps}
         data = {loginData}
+        clearErrors={clearErrors}
         handleChange = {handleLoginChange}
         handleLogin = {handleSignIn}
         handleGoogleSignIn = {handleGoogleSignIn}
@@ -339,8 +480,11 @@ const logout = async () => {
           handleNext={handleNext}
           steps = {steps}
           data = {signUpData}
+          errors = {errors}
+          setErrors = {setErrors}
           selectedValue = {selectedValue}
           handleSelectedValue = {handleSelectedValue}
+          clearErrors = {clearErrors}
           handleChange = {handleChange}
           handleSignUp = {handleSignUp}
           handleProfileChange = {handleProfileChange}
@@ -372,6 +516,8 @@ const logout = async () => {
   menuOpen = {menuOpen}
   progress = {progress}
   logout = {handleLogout}
+  setMenuOpen={setMenuOpen}
+  setMenuOpens = {setMenuOpens}
 
 
   />
@@ -390,6 +536,7 @@ const logout = async () => {
   menuOpen = {menuOpen}
   getMealData = {getData}
   logout={handleLogout}
+  total_calories = {total_calories}
   />
   </PrivateRoute>
 }
@@ -412,6 +559,9 @@ const logout = async () => {
     logout={handleLogout}
     goals = {goals}
     handleClick={handleClick}
+    calorieData = {calorieData}
+    handleCalorieChange = {handleCalorieChange}
+    handleCalorieData = {handleCalorieData}
     />
   </PrivateRoute>
 }
@@ -423,7 +573,37 @@ const logout = async () => {
   <PrivateRoute isAuthenticated= {isAuthenticated}>
     <Setup 
     handleClick = {handleClick}
+    steps = {setupSteps}
     />
+  </PrivateRoute>
+}
+
+/>
+
+<Route path = "/Calories" element = {
+  <PrivateRoute isAuthenticated={isAuthenticated}>
+  <Calories 
+  caloriesData = {calorieData}
+  logout={logout}
+  toggleMenu={toggleMenu}
+  menuOpen={menuOpen}
+  />
+  </PrivateRoute>
+}
+
+/>
+
+<Route path = "/Foods" element = {
+  <PrivateRoute isAuthenticated={isAuthenticated}>
+   <Foods 
+     caloriesData = {calorieData}
+     logout={logout}
+     toggleMenu={toggleMenu}
+     menuOpen={menuOpen}
+     foods = {food}
+     handleFoodItemChange = {handleFoodItemChange}
+     handleFoodData = {handleFoodItems}
+   />
   </PrivateRoute>
 }
 

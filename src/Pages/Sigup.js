@@ -2,7 +2,7 @@ import React from 'react';
 import styles from '../App.module.css';
 import logo from '../Assets/logo.png';
 import { Link } from 'react-router-dom';
-
+import { useEffect } from 'react';
 const SignUp = ({
   handleNext,
   steps,
@@ -13,9 +13,17 @@ const SignUp = ({
   handleBack,
   selectedValue,
   handleSelectedValue,
-  handleProfileChange
+  handleProfileChange,
+  errors,
+  clearErrors
 }) => {
+
+  useEffect(() => {
+    clearErrors();
+  }, []);
   return (
+
+    
     <div className={styles.wrappedContainer}>
       <div className={styles.logoStuff}>
         <img src={logo} className={styles.logo} alt="Logo" />
@@ -35,6 +43,7 @@ const SignUp = ({
           <h1>Create an Account</h1>
         </div>
         <form className={styles.form} onSubmit={handleSignUp}>
+          {errors && <p className={styles.errorMessage}>{errors}</p>}  {/* Display Error Message */}
           {steps === 1 && (
             <>
               <div className={styles.inputFields2}>
@@ -198,7 +207,10 @@ const SignUp = ({
             </>
           )}
         </form>
+        
       </div>
+
+      
     </div>
   );
 };

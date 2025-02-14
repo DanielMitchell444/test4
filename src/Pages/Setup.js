@@ -5,10 +5,13 @@ import styles from '../App.module.css'
 import { faRunning } from "@fortawesome/free-solid-svg-icons";
 import { faDumbbell } from "@fortawesome/free-solid-svg-icons";
 import { faHeartbeat } from "@fortawesome/free-solid-svg-icons";
-const Setup = ({handleClick}) => {
+const Setup = ({handleClick, steps, goals}) => {
  return (
 <div className= {styles.setupContainer2}>
 <div className= {styles.setupBody2}>
+
+{steps === 1 && (
+<>
  <div className= {styles.setupHeader2}>
     <h1>Finish Setup</h1>
     <p>Finish your acount Setup</p>
@@ -45,7 +48,9 @@ onClick={() => handleClick({goal: 'lose weight'})}
 
         />
 
-<button className= {styles.selectGoals}>Select Goal</button>
+<button className= {styles.selectGoals}
+onClick={() => handleClick({goal: 'gain weight'})}
+>Select Goal</button>
         </div>
         </div>
 </div>
@@ -62,11 +67,34 @@ onClick={() => handleClick({goal: 'lose weight'})}
 
         />
         <button className= {styles.selectGoals}
-        onClick = {() => handleClick({goals: 'gain weight'})}
+        onClick = {() => handleClick({goal: 'maintain weight'})}
         >Select Goal</button>
         </div>
         </div>
 </div>
+</>
+)
+}
+
+{
+ steps === 2 && goals.goals === "lose weight" && ( 
+<>
+<div className= {styles.loseWeightContainer}>
+<h1>Hi</h1>
+</div>
+</>
+ )       
+}
+
+{
+ steps === 2 && goals.goals === "gain weight" && ( 
+<>
+<div className="">
+<h1>Bye</h1>
+</div>
+</>
+ )       
+}
 </div>
 </div>
  )

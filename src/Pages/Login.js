@@ -1,11 +1,15 @@
 
 import styles from '../App.module.css'
 import logo from '../Assets/logo.png'
-
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-const Login = ({steps, data, handleLogin, handleChange, handleGoogleSignIn}) => {
-
+const Login = ({steps, data, handleLogin, handleChange, handleGoogleSignIn, errors, clearErrors}) => {
+     useEffect(() => {
+        clearErrors();
+      }, []);
  return(
+
+  
   <>
 <div className= {styles.wrappedContainer}>
 <div className= {styles.logoStuff}>
@@ -25,6 +29,8 @@ const Login = ({steps, data, handleLogin, handleChange, handleGoogleSignIn}) => 
    >
     {steps === 1 && (
     <>
+  
+  {errors && <p className={styles.errorMessage}>{errors}</p>}  {/* Display Error Message */}
     <div className= {styles.inputFields2}>
       <input type = "email" 
       placeholder="Enter Email"
@@ -41,7 +47,7 @@ const Login = ({steps, data, handleLogin, handleChange, handleGoogleSignIn}) => 
     </div>
     <div className= {styles.account}>
         <p>Don't have an account? 
-         <Link to = "/Signup">Signup</Link>
+         <Link to = "/Signup" onClick={clearErrors}>Signup</Link>
           
           </p>
       </div>
